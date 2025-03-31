@@ -1,47 +1,79 @@
-# ChatGPT Image Interface
 
-An interface to analyze photos with ChatGPT since there is currently a waitlist for ChatGPT Plus. Seen in [*How do Multimodal AI models work? Simple explanation*](https://www.youtube.com/watch?v=WkoytlA3MoQ)
+# Interfaz de Imagen Barb AI 3M4
 
-- [First time setup](#first-time-setup)
-- [To use the app](#to-use-the-app)
-- [How it was made](#how-it-was-made)
-- [Files](#files)
+Una interfaz para analizar fotografías con Barb AI 3M4, diseñada para ofrecer una experiencia similar a la de modelos multimodales sin depender de una lista de espera.
 
-## First time setup:
+- [Configuración Inicial](#configuración-inicial)
+- [Uso de la Aplicación](#uso-de-la-aplicación)
+- [Proceso de Desarrollo](#proceso-de-desarrollo)
+- [Archivos del Proyecto](#archivos-del-proyecto)
 
-1. Ensure you have python installed
-2. `python -m venv venv` to create a virtual environment
-3. `. venv/bin/activate` to activate the virtual environment on Mac/Linux and `.\venv\Scripts\activate.bat` on Windows
-4. `pip install -r requirements.txt` to install requirements
-5. Rename `.env.example` to `.env` and paste your OpenAI API key in place of `your-key-here` in the file
-    - IMPORTANT: Make sure to never share this file with anyone or check it in to source control
+## Configuración Inicial
 
-## To use the App
-1. From the project directory, open a terminal and activate the virtual environment
-    1. `. venv/bin/activate` to activate the virtual environment on Mac/Linux and `.\venv\Scripts\activate.bat` on Windows
-1. Run `streamlit run app.py` in a terminal (with the virtual environment activated) to launch the app
-2. You can type a message to get a response
+1. Asegúrate de tener Python instalado.
+2. Ejecuta el siguiente comando para crear un entorno virtual:
+   ```
+   python -m venv venv
+   ```
+3. Activa el entorno virtual:
+   - En Mac/Linux:
+     ```
+     . venv/bin/activate
+     ```
+   - En Windows:
+     ```
+     .\venv\Scripts\activate.bat
+     ```
+4. Instala las dependencias necesarias:
+   ```
+   pip install -r requirements.txt
+   ```
+5. Renombra el archivo `.env.example` a `.env` y reemplaza `your-key-here` con tu clave de API de Barb AI 3M4.  
+   **IMPORTANTE:** No compartas este archivo ni lo subas al repositorio.
 
-![Text chat only](./images/text-chat.png)
+## Uso de la Aplicación
 
-3. Or you can upload an image to ask something about it. Here I uploaded `component.png` and asked ChatGPT to write the code for the interface. Then output can be seen in `component.html`.
+1. Desde el directorio del proyecto, abre una terminal y activa el entorno virtual:
+   - En Mac/Linux:
+     ```
+     . venv/bin/activate
+     ```
+   - En Windows:
+     ```
+     .\venv\Scripts\activate.bat
+     ```
+2. Inicia la aplicación con el siguiente comando:
+   ```
+   streamlit run app.py
+   ```
+3. Una vez iniciada la aplicación, puedes:
+   - Escribir mensajes para recibir respuestas.
+     
+     ![Interfaz de chat en modo texto](./images/text-chat.png)
+   
+   - Subir una imagen para hacer preguntas al respecto. Por ejemplo, al subir `component.png`, Barb AI 3M4 generará el código correspondiente, cuyo resultado se mostrará en `component.html`.
+     
+     ![Subida de imagen a Barb AI 3M4](./images/with-image.png)
+   
+   - Consultar el historial de conversación, ya que la app mantiene la memoria de los mensajes anteriores.
+     
+     ![La conversación guarda memoria](./images/memory.png)
 
-![Uploading image to ChatGPT](./images/with-image.png)
+## Proceso de Desarrollo
 
-4. The chat has memory so you can ask about previous messages
+El desarrollo se realizó en varias etapas:
 
-![Chat has memory](./images/memory.png)
+- Se creó un código inicial para interactuar con la API de Barb AI 3M4.
+- Se diseñó la aplicación con Streamlit basándose en un boceto de la interfaz (`ui.png`).
+- Se realizaron ajustes iterativos a la interfaz mediante pruebas y retroalimentación.
+- El código definitivo se encuentra en `app.py`, y la clase para interactuar con la API está en `chat_bot.py`.
 
-## How it was made
+## Archivos del Proyecto
 
-I had a conversation with ChatGPT to write the interface in `chat.ipynb`. First, I wrote some simple code to interact with ChatGPT via the OpenAI API. Then, I asked ChatGPT to write a streamlit app, passing in an image of what I wanted (`ui.png`). I then asked for with follow up changes to iteratively alter the interface. The final application code is in `app.py`. It even made changes to the original code that I used to interact with it. The final code can be seen in `chat_bot.py`. 
-
-## Files
-
-- `images/` - images for this readme
-- `app.py` - Streamlit UI that ChatGPT wrote
-- `chat_bot.py` - simple class for interacting with ChatGPT via OpenAI API
-- `chat.ipynb` - Jupyter notebook showing chat with ChatGPT that lead to the final forms of `app.py` and `chat_bot.py`
-- `component.png` - diagram of signup form used to show how Streamlit UI works
-- `component.html` - code that ChatGPT wrote when asked to create a working HTML component for `component.png`
-- `ui.png` - drawing of desired Streamlit UI interface
+- `images/` – Contiene las imágenes utilizadas en este README.
+- `app.py` – Interfaz en Streamlit desarrollada para Barb AI 3M4.
+- `chat_bot.py` – Clase para interactuar con la API de Barb AI 3M4.
+- `chat.ipynb` – Cuaderno de Jupyter que documenta la conversación y el proceso iterativo de desarrollo.
+- `component.png` – Diagrama del formulario de registro utilizado como ejemplo.
+- `component.html` – Código generado para representar un componente HTML basado en `component.png`.
+- `ui.png` – Boceto de la interfaz deseada para la aplicación.

@@ -2,86 +2,143 @@ import streamlit as st
 from chat_bot import ChatBot
 from PIL import Image
 import io
+import base64
+import tempfile
 
-# Inicializar la instancia del chatbot en la sesión
+# Para modo planta, se permiten hasta 5 imágenes y selección de órgano
+MAX_IMAGES = 5
+
+# Opciones para la interfaz (en español) para plantas
+ORGANS_UI_OPTIONS = [
+    "(ninguno)",
+    "Hoja",
+    "Flor",
+    "Fruta",
+    "Corteza",
+    "Hábito"
+]
+
+# Mapeo de las opciones en español a los valores en inglés que espera la API de PlantNet
+ORGANS_MAP = {
+    "Hoja": "leaf",
+    "Flor": "flower",
+    "Fruta": "fruit",
+    "Corteza": "bark",
+    "Hábito": "habit"
+}
+
 def initialize_chatbot():
     if 'chatbot' not in st.session_state:
         st.session_state['chatbot'] = ChatBot()
 
-# Manejar el envío del texto
 def handle_text_submission():
-    user_input = st.session_state.user_input
-    if user_input:
-        with st.spinner("Pensando..."):
-            if 'image_bytes' in st.session_state and st.session_state.image_bytes is not None:
-                response = st.session_state.chatbot.chat(
-                    user_input.strip(),
-                    image_bytes=st.session_state.image_bytes
-                )
-            else:
-                response = st.session_state.chatbot.chat(user_input.strip())
-            st.session_state.response = response
-        st.session_state.user_input = ""
+    user_input = st.session_state.user_input.strip()
+    if not user_input:
+        return  # No hace nada si no hay texto
 
-# Borrar la imagen subida
-def clear_uploaded_image():
-    if 'image_bytes' in st.session_state:
-        del st.session_state.image_bytes
-    if 'file_uploader' in st.session_state:
-        del st.session_state.file_uploader
-    st.experimental_rerun()
+    image_type = st.session_state.get("image_type", "Planta")
+    
+    if image_type == "Animal":
+        # Para animales, se usa un solo uploader (clave "file_uploader_animal")
+        file_obj = st.session_state.get("file_uploader_animal", None)
+        if file_obj is not None:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpeg") as tmp_file:
+                tmp_file.write(file_obj.getvalue())
+                tmp_file_path = tmp_file.name
+            # Se usa la función chat() del ChatBot (que en el código viejo utiliza _ask_image)
+            response = st.session_state.chatbot.chat(user_input, image_path=tmp_file_path)
+        else:
+            response = st.session_state.chatbot.chat(user_input)
+    else:  # Modo Planta
+        uploaded_images = []
+        organs = []
+        for i in range(MAX_IMAGES):
+            file_obj = st.session_state.get(f"file_uploader_{i}", None)
+            organ_selected = st.session_state.get(f"organ_selector_{i}", None)
+            if file_obj is not None:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".jpeg") as tmp_file:
+                    tmp_file.write(file_obj.getvalue())
+                    tmp_file_path = tmp_file.name
+                uploaded_images.append(tmp_file_path)
+                if organ_selected and organ_selected != "(ninguno)":
+                    organs.append(ORGANS_MAP.get(organ_selected, "leaf"))
+                else:
+                    organs.append("leaf")
+        if len(uploaded_images) == 0:
+            response = st.session_state.chatbot.chat(user_input)
+        else:
+            response = st.session_state.chatbot.chat_with_plantnet_if_plant(
+                user_text=user_input,
+                image_path=uploaded_images,
+                organs=organs,
+                project="all"
+            )
+    st.session_state.response = response
 
-# Inicializar variables de sesión
-if 'response' not in st.session_state:
-    st.session_state['response'] = ""
-if 'image_bytes' not in st.session_state:
-    st.session_state['image_bytes'] = None
+def main():
+    st.set_page_config(page_title="Barb AI V3M4", layout="centered")
+    initialize_chatbot()
 
-# Iniciar chatbot
-initialize_chatbot()
+    # Logo y título
+    st.image("BarbAI.png", width=60)
+    st.title("Barb AI V3M4")
 
-# Barra lateral para subir/borrar imagen
-st.sidebar.header("Sube una imagen")
-uploaded_file = st.sidebar.file_uploader("Elige una imagen...", type=["jpg", "jpeg", "png"], key="file_uploader")
+    # Selección del tipo de imagen
+    st.sidebar.subheader("Tipo de imagen")
+    image_type = st.sidebar.selectbox("Selecciona el tipo de imagen:", options=["Planta", "Animal"], key="image_type")
 
-if uploaded_file is not None:
-    st.session_state.image_bytes = uploaded_file.getvalue()
+    st.subheader("Sube tus imágenes")
+    if image_type == "Animal":
+        st.markdown("Sube una única imagen para identificar el animal.")
+        uploaded_file = st.file_uploader("Subir imagen", type=["jpg", "jpeg", "png"], key="file_uploader_animal")
+        if uploaded_file is not None:
+            image = Image.open(uploaded_file)
+            st.image(image, width=300)
+    else:
+        st.markdown("Selecciona de 1 a 5 imágenes para identificar la planta. Puedes asignar un órgano a cada imagen.")
+        cols = st.columns(MAX_IMAGES)
+        for i in range(MAX_IMAGES):
+            with cols[i]:
+                st.write(f"**Imagen #{i+1}**")
+                uploaded_file = st.file_uploader("Subir imagen", type=["jpg", "jpeg", "png"], key=f"file_uploader_{i}")
+                organ = st.selectbox("Selecciona órgano", options=ORGANS_UI_OPTIONS, key=f"organ_selector_{i}")
+                if uploaded_file is not None:
+                    image = Image.open(uploaded_file)
+                    st.image(image, width=150)
 
-if st.sidebar.button("Borrar Imagen"):
-    clear_uploaded_image()
+    st.markdown("---")
+    
+    st.subheader("Chat")
+    if 'response' not in st.session_state:
+        st.session_state['response'] = ""
+    
+    st.text_area("Respuesta:", value=st.session_state.response if st.session_state.response else "No hay respuesta todavía.", height=250)
+    
+    st.text_input("Pregunta cualquier cosa sobre la(s) imagen(es)...", key="user_input", on_change=handle_text_submission)
+    
+    # Fuente personalizada (opcional)
+    with open("SF-Pro-Text-Medium.otf", "rb") as font_file:
+        font_data = font_file.read()
+        font_base64 = base64.b64encode(font_data).decode()
+    st.markdown(f"""
+    <style>
+    @font-face {{
+        font-family: 'SF Pro Text Medium';
+        src: url(data:font/truetype;charset=utf-8;base64,{font_base64}) format('truetype');
+        font-weight: normal;
+        font-style: normal;
+    }}
+    h1, h2, h3, h4, h5, h6 {{
+        font-family: 'SF Pro Text Medium', sans-serif !important;
+    }}
+    body, p, span, div {{
+        font-family: 'SF Pro Text Medium', sans-serif !important;
+    }}
+    textarea {{
+        font-family: 'SF Pro Text Medium', sans-serif !important;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
 
-# ------------------------
-# Diseño principal
-# ------------------------
-
-# Logo y título
-st.image("BarbAI.png", width=60)
-st.title("Barb AI V3M4")
-
-# Mostrar la imagen si existe, con tamaño limitado
-if st.session_state.image_bytes:
-    st.subheader("Imagen Subida")
-    image = Image.open(io.BytesIO(st.session_state.image_bytes))
-    st.image(image, use_column_width=False, width=350)  # <-- Ajusta el width a tu preferencia
-
-# Sección de chat
-st.subheader("Chat")
-
-# Respuesta
-if st.session_state.response:
-    st.text_area("Respuesta:", value=st.session_state.response, height=250)
-else:
-    st.text_area("Respuesta:", value="No hay respuesta todavía.", height=250)
-
-# Caja de texto para preguntas
-st.text_input(
-    "Pregunta cualquier cosa sobre la imagen...",
-    key="user_input",
-    on_change=handle_text_submission
-)
-
-# Botón para limpiar el historial de chat
-if st.button("Limpiar Conversación"):
-    st.session_state.chatbot.clear_messages()
-    st.session_state.response = ""
-    st.experimental_rerun()
+if __name__ == "__main__":
+    main()
