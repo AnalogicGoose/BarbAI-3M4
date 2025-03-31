@@ -4,18 +4,13 @@ import json
 import requests
 from openai import OpenAI
 from dotenv import load_dotenv
+from clave_openai import obtener_api_key
 
 load_dotenv()
 
-client = OpenAI()
-
-def encode_image(image_path):
-    with open(image_path, "rb") as image_file:
-        return base64.b64encode(image_file.read()).decode('utf-8')
-
 class ChatBot:
     def __init__(self, 
-                 api_key=os.getenv('OPENAI_API_KEY'), 
+                 api_key = obtener_api_key(), 
                  model='gpt-4o',
                  system=(
                     "Eres un(a) experto(a) botánico(a) y zoólogo(a) especializado(a) en la flora y fauna y me decis el nombre cientifico, donde usualmente se encuentra en nicaragua (si es de nicaragua el animal) y su status de peligro de extinción . "
@@ -24,6 +19,7 @@ class ChatBot:
                     "Si no es una planta, ayúdame a identificar el animal u objeto de la imagen y describe sus características."
                  )) -> None:
         self._api_key = api_key
+        self._client = OpenAI(api_key=self._api_key)
         self._model = model
         self._system = system
         self._messages = []
@@ -41,7 +37,7 @@ class ChatBot:
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self._api_key}"
         }
-    
+
     @property
     def _payload(self):
         return {
@@ -53,7 +49,7 @@ class ChatBot:
     @property
     def messages(self):
         return self._messages
-    
+
     def clear_messages(self):
         self._messages = []
         self._add_message({"role": "system", "content": self._system})
@@ -63,8 +59,8 @@ class ChatBot:
 
     def _ask_text(self, text):
         self._add_message({"role": "user", "content": text})
-            
-        response = client.chat.completions.create(
+
+        response = self._client.chat.completions.create(
             model=self._model,
             messages=self.messages,
             max_tokens=self._max_tokens
@@ -75,7 +71,7 @@ class ChatBot:
             "role": assistant_msg.role,
             "content": assistant_msg.content
         })
-    
+
         return assistant_msg.content
 
     def chat(self, text, image_path=None, image_bytes=None):
@@ -117,7 +113,6 @@ class ChatBot:
         else:
             raise Exception("Error from the API: " + response.text)
 
-    # Funciones para plantas (usando PlantNet)
     def identify_with_plantnet(self, image_paths, organs=['leaf'], project='all'):
         if not self._plantnet_api_key:
             raise ValueError("No se encontró la API key de PlantNet. Asegúrate de setear PLANTNET_API_KEY.")
